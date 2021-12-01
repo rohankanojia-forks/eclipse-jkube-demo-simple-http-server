@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+    id 'org.eclipse.jkube.kubernetes' version '1.6.0-SNAPSHOT'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+jar {
+    manifest {
+        attributes(
+                "Main-Class": "in.rohaan.HttpServerApplication"
+        )
+    }
+}
+
+kubernetes {
+    images {
+        image {
+            name = "simple-http-server:${project.version}"
+            build {
+                from = "azul/zulu-openjdk-alpine:11.0.11-jre"
+                assembly {
+                    mode = "dir"
+                    targetDir = "/deployments"
+                    layers = [{
+                        id = "copy-jar"
+                        files = [{
+                               source = file("build/libs/${project.name}-${project.version}.jar")
+                               outputDirectory = "."
+                        }]
+                    }]
+                }
+                cmd {
+                    exec = ["java", "-jar", "/deployments/${project.name}-${project.version}.jar"]
+                }
+                ports = ["8080"]
+            }
+        }
+    }
+    enricher {
+        config {
+            "jkube-service" {
+                type = "NodePort"
+            }
+        }
+    }
+}
